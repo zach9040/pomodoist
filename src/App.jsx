@@ -1,125 +1,100 @@
 import React from 'react';
-import Timer from './components/Timer';
-import TodoItem from './components/TodoItem';
-import TodoInput from './components/TodoInput';
-import ClearButton from './components/ClearButton';
-import EmptyState from './components/EmptyState';
-
+import Song from './components/Song';
+import songData from './components/Data';
+import Current from "./components/CurrentlyPlaying";
+import Next from "./components/NextButton";
+import Previous from "./components/PreviousButton";
+import PausePlayButton from "./components/PausePlayButton";
+import RecentlyPlayed from "./components/RecentlyPlayed";
 import './styles/App.css';
+
+
+let client_id = '6b8e9bf5d4ee484b96d681c3e294c5e1';
+let client_secret =  '2479ef02e5e7484aaf445426f3a998cc';
+let redirect_uri = "http://localhost:3000/";
 
 class App extends React.Component {
   constructor(props) {
     super(props);
-    this.addItem = this.addItem.bind(this);
-    this.clearCompletedItems = this.clearCompletedItems.bind(this);
-    this.startSession = this.startSession.bind(this);
-    this.increaseSessionsCompleted = this.increaseSessionsCompleted.bind(this);
-    this.toggleItemIsCompleted = this.toggleItemIsCompleted.bind(this);
-
+    this.pauseSong = this.pauseSong.bind(this);
+    this.getRandomSong = this.getRandomSong.bind(this);
+    this.playPreviousSong = this.playPreviousSong.bind(this);
+    this.playSong = this.playSong.bind(this);
+    this.clearRecent = this.clearRecent.bind(this);
+    this.getToken = this.getToken.bind(this);
     this.state = {
-      // TODO 1
-      items : [],
-      nextItemId : 0,
-      sessionIsRunning : false,
-      itemIdRunning : null
+      nowPlaying: {name : 'Nothing'},
+      prevSong: {},
+      isPlaying: false,
+      songs : songData.songs,
+      recent : [],
+      token : 'asdftok',
+      isLoaded : false
     };
   }
 
-
-  addItem(description) {
-    const { nextItemId } = this.state;
-    const newItem = {
-      // TODO 2: initialize new item object
-      id : this.state.nextItemId,
-      description : description,
-      sessionsCompleted : 0,
-      isCompleted : false
-    };
-    this.setState((prevState => ({
-      // TODO 2: append new items to list and increase nextItemId by 1
-      items : prevState.items.concat([newItem]),
-      nextItemId : prevState.nextItemId + 1
-    })));
+  clearRecent() {
+    let clear = [];
+    this.setState({recent : clear});
   }
 
-  clearCompletedItems() {
-    // TODO 6
-    const check = this.state.items.filter(item => item.isCompleted === true);
-    this.setState({items : check});
+  playPreviousSong() {
+    let previous = this.state.prevSong;
+    this.setState({nowPlaying : previous, prevSong : {}});
   }
 
-  increaseSessionsCompleted(itemId) {
-    // TODO 5
-    let check = this.state.items;
-    for (let a = 0; a < this.state.items.length; a += 1) {
-      if (check[a].id === itemId) {
-        check.sessionsCompleted += 1;
-        this.setState({items : check});
-      }
-    }
+  getRandomSong() {
+    const nextSong = songData.songs[Math.floor(Math.random()* songData.songs.length)];
+    this.setState({nowPlaying : nextSong, prevSong : this.state.nowPlaying,
+        isPlaying : true, recent : this.state.recent.concat([this.state.nowPlaying])});
   }
 
-  toggleItemIsCompleted(itemId) {
-    // TODO 6
-    let check = this.state.items;
-    for (let a = 0; a < this.state.items.length; a += 1) {
-      if (check[a].id === itemId) {
-        check[a].isCompleted = !check[a].isCompleted;
-        this.setState({item : check});
-      }
-    }
+  playSong(name, art, spotifyLink) {
+    let newSong = {name : name, albumArt : art, spotifyLink : spotifyLink};
+    let previous = this.state.nowPlaying;
+    this.setState({nowPlaying : newSong, prevSong : previous
+      , recent : this.state.recent.concat([previous])});
   }
 
-  startSession(id) {
-    // TODO 4
-    this.setState((prevState => ({
-      sessionIsRunning : true,
-      itemIdRunning : id
-    })))
-
+  pauseSong() {
+    this.setState({isPlaying : !this.state.isPlaying})
   }
 
-  checkComplete() {
-    let check = this.state.items;
-    for (let a = 0; a < this.state.items.length; a += 1) {
-      if (check[a].isCompleted) {
-        return true;
-      }
-    }
-    return false;
+
+  async getToken() {
+    const token = window.location.replace('https://accounts.spotify.com/authorize?' +
+        'client_id=' + client_id + '&redirect_uri=' +
+        redirect_uri + '&response_type=token')
+    const tokenJson = await token.json();
+    this.setState({
+      token : tokenJson.access_token
+    })
   }
 
   render() {
-    const {
-      items,
-      sessionIsRunning,
-      itemIdRunning,
-      areItemsMarkedAsCompleted = this.checkComplete()
-    } = this.state;
     return (
       <div className="flex-wrapper">
-        <div className="container">
-          <header>
-            <h1 className="heading">Today</h1>
-            {areItemsMarkedAsCompleted && <ClearButton onClick={this.clearCompletedItems} />}
-          </header>
-          {this.state.items.length === 0 && <EmptyState /> }
-            {this.state.sessionIsRunning === true && <Timer
-              mode="WORK"
-              onSessionComplete={() => this.increaseSessionsCompleted(itemIdRunning)}
-              autoPlays
-              key={this.state.itemIDRunning}
-            />}
-            <div className="items-container">
-              {this.state.items.map((item) => ( <TodoItem description={item.description} sessionsCompleted={this.state.sessionsCompleted}
-                                                          startSession={() => this.startSession(item.id)}
-                                                          toggleIsCompleted={() => this.toggleItemIsCompleted(item.id)}
-                                                          key={item.id}/> ))}
-            </div>
+        <h2> BETTER THAN SPOTIFY </h2>
+        <div>
+          <button onClick={() => this.getToken()}>
+            Login
+          </button>
         </div>
-        <footer>
-          <TodoInput addItem={this.addItem} />
-        </footer>
+        <div className="songDisplay">
+          {this.state.songs.map(song => <Song title={song.name} link={song.spotifyLink}
+                                              image={song.albumArt} onClick={this.playSong}/>)}
+        </div>
+        <div className="current">
+          <Current title={this.state.nowPlaying.name} />
+          <div className="buttonDisplay">
+            <Previous isPlaying={this.state.isPlaying} onClick={this.playPreviousSong}/>
+            <PausePlayButton isPlaying={this.state.isPlaying} onClick={this.pauseSong}/>
+            <Next isPlaying={this.state.isPlaying} onClick={this.getRandomSong}/>
+          </div>
+          <div className="recent">
+            <RecentlyPlayed songList={this.state.recent} onClick={this.clearRecent} />
+          </div>
+        </div>
       </div>
     );
   }
